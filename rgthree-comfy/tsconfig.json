@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "ESNext",
+    // "typeRoots": [
+    //   "./ts/typings",
+    // ],
+    "baseUrl": "./",
+    "paths": {
+        "*": ["ts/typings/*"],
+    },
+    "outDir": "web/",
+    "removeComments": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "allowUnusedLabels": true,
+    "skipLibCheck": true,
+  },
+  "include": [
+    "ts/*.ts", "ts/**/*.ts", "ts/typings/index.d.ts",
+  ],
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.d.ts",
+    "node_modules/**/*.ts"
+  ]
+}
