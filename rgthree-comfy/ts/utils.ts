@@ -18,6 +18,7 @@ import type { Constructor } from "./typings/index.js";
 import { app } from "../../scripts/app.js";
 // @ts-ignore
 import { api } from "../../scripts/api.js";
+import { wait } from "./shared_utils.js";
 
 declare const LGraphNode: typeof TLGraphNode;
 declare const LiteGraph: typeof TLiteGraph;
@@ -346,14 +347,6 @@ function toggleConnectionLabel(cxn: any, hide = true) {
   return cxn;
 }
 
-export function wait(ms = 16, value?: any) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(value);
-    }, ms);
-  });
-}
-
 export function addHelp(nodeCtor: Constructor<TLGraphNode>, comfyApp?: ComfyApp) {
   addMenuItem(nodeCtor, comfyApp || app, {
     name: "🛟 Node Help",
@@ -558,7 +551,6 @@ function getTypeFromSlot(
     const connectedSlots =
       dir === IoDirection.OUTPUT ? connectedNode.inputs : connectedNode.outputs;
     let connectedSlot = connectedSlots[connectedSlotNum];
-    console.log(connectedSlot);
     if (connectedSlot?.type != null && connectedSlot?.type != "*") {
       return {
         type: connectedSlot.type as string,

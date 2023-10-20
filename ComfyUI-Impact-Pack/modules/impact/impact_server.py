@@ -17,6 +17,8 @@ import io
 import impact.wildcards as wildcards
 import comfy
 from io import BytesIO
+import random
+
 
 @server.PromptServer.instance.routes.post("/upload/temp")
 async def upload_image(request):
@@ -224,6 +226,99 @@ async def segs_picker(request):
     return web.Response(status=400)
 
 
+@server.PromptServer.instance.routes.get("/view/validate")
+async def view_validate(request):
+    if "filename" in request.rel_url.query:
+        filename = request.rel_url.query["filename"]
+        subfolder = request.rel_url.query["subfolder"]
+        filename, output_dir = folder_paths.annotated_filepath(filename)
+
+        if filename == '' or filename[0] == '/' or '..' in filename:
+            return web.Response(status=400)
+
+        file = os.path.join(output_dir, subfolder, filename)
+
+        if os.path.isfile(file):
+            return web.Response(status=200)
+
+    return web.Response(status=400)
+
+
+@server.PromptServer.instance.routes.get("/impact/validate/pb_id_image")
+async def view_validate(request):
+    if "id" in request.rel_url.query:
+        pb_id = request.rel_url.query["id"]
+
+        if pb_id not in core.preview_bridge_image_id_map:
+            return web.Response(status=400)
+
+        file = core.preview_bridge_image_id_map[pb_id]
+        if os.path.isfile(file):
+            return web.Response(status=200)
+
+    return web.Response(status=400)
+
+
+@server.PromptServer.instance.routes.get("/impact/set/pb_id_image")
+async def set_previewbridge_image(request):
+    if "filename" in request.rel_url.query:
+        node_id = request.rel_url.query["node_id"]
+        filename = request.rel_url.query["filename"]
+        path_type = request.rel_url.query["type"]
+        subfolder = request.rel_url.query["subfolder"]
+        filename, output_dir = folder_paths.annotated_filepath(filename)
+
+        if filename == '' or filename[0] == '/' or '..' in filename:
+            return web.Response(status=400)
+
+        if output_dir is None:
+            if path_type == 'input':
+                output_dir = folder_paths.get_input_directory()
+            elif path_type == 'output':
+                output_dir = folder_paths.get_output_directory()
+            else:
+                output_dir = folder_paths.get_temp_directory()
+
+        file = os.path.join(output_dir, subfolder, filename)
+        item = {
+            'filename': filename,
+            'type': path_type,
+            'subfolder': subfolder,
+        }
+        pb_id = core.set_previewbridge_image(node_id, file, item)
+
+        return web.Response(status=200, text=pb_id)
+
+    return web.Response(status=400)
+
+
+@server.PromptServer.instance.routes.get("/impact/get/pb_id_image")
+async def get_previewbridge_image(request):
+    if "id" in request.rel_url.query:
+        pb_id = request.rel_url.query["id"]
+
+        if pb_id in core.preview_bridge_image_id_map:
+            _, path_item = core.preview_bridge_image_id_map[pb_id]
+            return web.json_response(path_item)
+
+    return web.Response(status=400)
+
+
+@server.PromptServer.instance.routes.get("/impact/view/pb_id_image")
+async def view_previewbridge_image(request):
+    if "id" in request.rel_url.query:
+        pb_id = request.rel_url.query["id"]
+
+        if pb_id in core.preview_bridge_image_id_map:
+            file = core.preview_bridge_image_id_map[pb_id]
+
+            with Image.open(file) as img:
+                filename = os.path.basename(file)
+                return web.FileResponse(file, headers={"Content-Disposition": f"filename=\"{filename}\""})
+
+    return web.Response(status=400)
+
+
 def onprompt_for_switch(json_data):
     inversed_switch_info = {}
     onprompt_switch_info = {}
@@ -295,9 +390,56 @@ def onprompt_for_pickers(json_data):
         del segs_picker_map[key]
 
 
+def gc_preview_bridge_cache(json_data):
+    prompt_keys = json_data['prompt'].keys()
+
+    for key in list(core.preview_bridge_cache.keys()):
+        if key not in prompt_keys:
+            print(f"key deleted: {key}")
+            del core.preview_bridge_cache[key]
+
+
+def workflow_imagereceiver_update(json_data):
+    prompt = json_data['prompt']
+
+    for v in prompt.values():
+        if 'class_type' in v and v['class_type'] == 'ImageReceiver':
+            if v['inputs']['save_to_workflow']:
+                v['inputs']['image'] = "#DATA"
+
+
+def regional_sampler_seed_update(json_data):
+    prompt = json_data['prompt']
+
+    for k, v in prompt.items():
+        if 'class_type' in v and v['class_type'] == 'RegionalSampler':
+            seed_2nd_mode = v['inputs']['seed_2nd_mode']
+
+            new_seed = None
+            if seed_2nd_mode == 'increment':
+                new_seed = v['inputs']['seed_2nd']+1
+                if new_seed > 1125899906842624:
+                    new_seed = 0
+            elif seed_2nd_mode == 'decrement':
+                new_seed = v['inputs']['seed_2nd']-1
+                if new_seed < 0:
+                    new_seed = 1125899906842624
+            elif seed_2nd_mode == 'randomize':
+                new_seed = random.randint(0, 1125899906842624)
+
+            if new_seed is not None:
+                server.PromptServer.instance.send_sync("impact-node-feedback", {"id": k, "widget_name": "seed_2nd", "type": "INT", "value": new_seed})
+
+
 def onprompt(json_data):
-    json_data = onprompt_for_switch(json_data)
-    onprompt_for_pickers(json_data)
+    try:
+        json_data = onprompt_for_switch(json_data)
+        onprompt_for_pickers(json_data)
+        gc_preview_bridge_cache(json_data)
+        workflow_imagereceiver_update(json_data)
+        regional_sampler_seed_update(json_data)
+    except Exception as e:
+        print(f"[ComfyUI-Impact-Pack] Error on prompt: Several features will not work.\n{e}")
 
     return json_data
 

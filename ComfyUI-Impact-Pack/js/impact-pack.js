@@ -110,9 +110,11 @@ function imgSendHandler(event) {
 						nodes[i].widgets[0].value = `${data.filename} [${data.type}]`;
 
 					let img = new Image();
+					img.onload = (event) => {
+						nodes[i].imgs = [img];
+						nodes[i].size[1] = Math.max(200, nodes[i].size[1]);
+					};
 					img.src = `/view?filename=${data.filename}&type=${data.type}&subfolder=${data.subfolder}`+app.getPreviewFormatParam();
-					nodes[i].imgs = [img];
-					nodes[i].size[1] = Math.max(200, nodes[i].size[1]);
 				}
 			}
 		}
@@ -181,7 +183,7 @@ api.addEventListener("executed", progressExecuteHandler);
 app.registerExtension({
 	name: "Comfy.Impack",
 	loadedGraphNode(node, app) {
-		if (node.comfyClass == "PreviewBridge" || node.comfyClass == "MaskPainter") {
+		if (node.comfyClass == "MaskPainter") {
 			input_dirty[node.id + ""] = true;
 		}
 	},
@@ -277,7 +279,7 @@ app.registerExtension({
 
                 let select_slot = this.inputs.find(x => x.name == "select");
                 if(this.widgets) {
-                    this.widgets[0].options.max = select_slot?this.outputs.length-2:this.outputs.length-1;
+                    this.widgets[0].options.max = select_slot?this.outputs.length-1:this.outputs.length;
                     this.widgets[0].value = Math.min(this.widgets[0].value, this.widgets[0].options.max);
                     if(this.widgets[0].options.max > 0 && this.widgets[0].value == 0)
                         this.widgets[0].value = 1;
@@ -286,8 +288,8 @@ app.registerExtension({
         }
 
         if (nodeData.name === 'ImpactMakeImageList' || nodeData.name === 'ImpactMakeImageBatch' ||
-            nodeData.name === 'CombineRegionalPrompts' || nodeData.name === 'ImpactSwitch' ||
-            nodeData.name === 'LatentSwitch' || nodeData.name == 'SEGSSwitch') {
+            nodeData.name === 'CombineRegionalPrompts' || nodeData.name === 'ImpactCombineConditionings' ||
+            nodeData.name === 'ImpactSwitch' || nodeData.name === 'LatentSwitch' || nodeData.name == 'SEGSSwitch') {
             var input_name = "input";
 
             switch(nodeData.name) {
@@ -298,6 +300,10 @@ app.registerExtension({
 
             case 'CombineRegionalPrompts':
                 input_name = "regional_prompts";
+                break;
+
+            case 'ImpactCombineConditionings':
+                input_name = "conditioning";
                 break;
 
             case 'LatentSwitch':
@@ -410,7 +416,7 @@ app.registerExtension({
                 }
 
                 if(this.widgets) {
-                    this.widgets[0].options.max = select_slot?this.inputs.length-2:this.inputs.length-1;
+                    this.widgets[0].options.max = select_slot?this.inputs.length-1:this.inputs.length;
                     this.widgets[0].value = Math.min(this.widgets[0].value, this.widgets[0].options.max);
                     if(this.widgets[0].options.max > 0 && this.widgets[0].value == 0)
                         this.widgets[0].value = 1;
@@ -546,6 +552,7 @@ app.registerExtension({
 
 			// Preventing validation errors from occurring in any situation.
 			node.widgets[combo_id].serializeValue = () => { return "Select the LoRA to add to the text"; }
+			node.widgets[combo_id+1].serializeValue = () => { return "Select the Wildcard to add to the text"; }
 		}
 
 		if(node.comfyClass == "ImpactWildcardProcessor" || node.comfyClass == "ImpactWildcardEncode") {
@@ -635,7 +642,7 @@ app.registerExtension({
             populated_text_widget.serializeValue = force_serializeValue;
 		}
 
-		if (node.comfyClass == "PreviewBridge" || node.comfyClass == "MaskPainter") {
+		if (node.comfyClass == "MaskPainter") {
 			node.widgets[0].value = '#placeholder';
 
 			Object.defineProperty(node, "images", {

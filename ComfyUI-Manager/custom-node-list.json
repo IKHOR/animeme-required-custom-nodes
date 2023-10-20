@@ -458,16 +458,6 @@
             "description": "Save a picture as Webp file in Comfy + Workflow loading"
         },
         {
-            "author": "chenbaiyujason",
-            "title": "sc-node-comfyui",
-            "reference": "https://github.com/chenbaiyujason/sc-node-comfyui",
-            "files": [
-                "https://github.com/chenbaiyujason/sc-node-comfyui"
-            ],
-            "install_type": "git-clone",
-            "description": "Nodes for GPT interaction and text manipulation"
-        },
-        {
             "author": "SLAPaper",
             "title": "ComfyUI-Image-Selector",
             "reference": "https://github.com/SLAPaper/ComfyUI-Image-Selector",
@@ -726,10 +716,10 @@
             "title": "NodeGPT",
             "reference": "https://github.com/xXAdonesXx/NodeGPT",
             "files": [
-                "https://github.com/xXAdonesXx/NodeGPT/raw/main/Textnode.py"
+                "https://github.com/xXAdonesXx/NodeGPT"
             ],
-            "install_type": "copy",
-            "description": "ComfyUI Extension Nodes for Automated Text Generation."
+            "install_type": "git-clone",
+            "description": "Implementation of AutoGen inside ComfyUI. This repository is under development, and not everything is functioning correctly yet."
         },
         {
             "author": "RockOfFire",
@@ -763,13 +753,13 @@
         },
         {
             "author": "bmad4ever",
-            "title": "ComfyUI-Bmad-Custom-Nodes",
-            "reference": "https://github.com/bmad4ever/ComfyUI-Bmad-Custom-Nodes",
+            "title": "Bmad Nodes",
+            "reference": "https://github.com/bmad4ever/comfyui_bmad_nodes",
             "files": [
-                "https://github.com/bmad4ever/ComfyUI-Bmad-Custom-Nodes"
+                "https://github.com/bmad4ever/comfyui_bmad_nodes"
             ],
             "install_type": "git-clone",
-            "description": "This custom node offers the following functionalities: API support for setting up API requests, computer vision primarily for masking purposes using GrabCut or contours, and general utility to streamline workflow setup or implement essential missing features."
+            "description": "This custom node offers the following functionalities: API support for setting up API requests, computer vision primarily for masking or collages, and general utility to streamline workflow setup or implement essential missing features."
         },
         {
             "author": "FizzleDorf",
@@ -783,13 +773,13 @@
         },
         {
             "author": "FizzleDorf",
-            "title": "AIT",
-            "reference": "https://github.com/FizzleDorf/AIT",
+            "title": "ComfyUI-AIT",
+            "reference": "https://github.com/FizzleDorf/ComfyUI-AIT",
             "files": [
-                "https://github.com/FizzleDorf/AIT"
+                "https://github.com/FizzleDorf/ComfyUI-AIT"
             ],
             "install_type": "git-clone",
-            "description": "Nodes: Load AITemplate, Load AITemplate (ControlNet), VAE Decode (AITemplate), VAE Encode (AITemplate), VAE Encode (AITemplate, Inpaint). Experimental usage of AITemplate"
+            "description": "A ComfyUI implementation of Facebook Meta's <a href='https://github.com/facebookincubator/AITemplate' target='blank'/>AITemplate</a> repo for faster inference using cpp/cuda. This new repo is behind the old version but is a much more stable foundation to keep AIT online. Please be patient as the repo will eventually include the same features as before.<BR>NOTE: You can find the old AIT extension in the legacy channel."
         },
         {
             "author": "filipemeneses",
@@ -1146,9 +1136,8 @@
         },
         {
             "author": "Kosinkadink",
-            "title": "AnimateDiff (Kosinkadink version)",
+            "title": "AnimateDiff Evolved",
             "reference": "https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved",
-            "pip": ["flash_attn"],
             "files": [
                 "https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved"
             ],
@@ -2025,6 +2014,16 @@
             "description": "A set of nodes that allow data to be 'broadcast' to some or all unconnected inputs. Greatly reduces link spaghetti."
         },
         {
+            "author": "chrisgoringe",
+            "title": "Prompt Info",
+            "reference": "https://github.com/chrisgoringe/cg-prompt-info",
+            "files": [
+                "https://github.com/chrisgoringe/cg-prompt-info"
+            ],
+            "install_type": "git-clone",
+            "description": "Prompt Info"
+        },
+        {
             "author": "TGu-97",
             "title": "TGu Utilities",
             "reference": "https://github.com/TGu-97/ComfyUI-TGu-utils",
@@ -2093,7 +2092,7 @@
                 "https://github.com/hhhzzyang/Comfyui_Lama"
             ],
             "install_type": "git-clone",
-            "description": "Nodes: LamaaModelLoad, LamaApply, YamlConfigLoader. a costumer node is realized to remove anything/inpainting anything from a picture by mask inpainting."
+            "description": "Nodes: LamaaModelLoad, LamaApply, YamlConfigLoader. a costumer node is realized to remove anything/inpainting anything from a picture by mask inpainting.<p style='background-color: black; color: red;'>WARN:This extension includes the entire model, which can result in a very long initial installation time, and there may be some compatibility issues with older dependencies and ComfyUI.</p>"
         },
         {
             "author": "thedyze",
@@ -2163,7 +2162,7 @@
                 "https://github.com/a1lazydog/ComfyUI-AudioScheduler"
             ],
             "install_type": "git-clone",
-            "description": "Nodes: LoadAudioFromPath, AudioToFFTs, BatchAmplitudeSchedule, AmplitudeSchedule."
+            "description": "Load mp3 files and use the audio nodes to power animations and prompt scheduling. Use with FizzNodes."
         },
         {
             "author": "whatbirdisthat",
@@ -2176,14 +2175,94 @@
             "description": "Cyberdolphin Suite of ComfyUI nodes for wiring up things."
         },
         {
-            "author": "ProDALOR",
-            "title": "comfyui_u2net",
-            "reference": "https://github.com/ProDALOR/comfyui_u2net",
+            "author": "chrish-slingshot",
+            "title": "ComfyUI-ImageGlitcher",
+            "reference": "https://github.com/chrish-slingshot/ComfyUI-ImageGlitcher",
             "files": [
-                "https://github.com/ProDALOR/comfyui_u2net"
+                "https://github.com/chrish-slingshot/ComfyUI-ImageGlitcher"
             ],
             "install_type": "git-clone",
-            "description": "Nodes: Load U2Net model, U2Net segmentation, To mask, Segmentation to mask, U2NetBaseNormalization, U2NetMaxNormalization"
+            "description": "Nodes: ImageGlitcher. Based on the HTML image glitcher by Felix Turner <a href='https://www.airtightinteractive.com/demos/js/imageglitcher/' target='blank'>here</a>."
+        },
+        {
+            "author": "spinagon",
+            "title": "ComfyUI-seam-carving",
+            "reference": "https://github.com/spinagon/ComfyUI-seam-carving",
+            "files": [
+                "https://github.com/spinagon/ComfyUI-seam-carving"
+            ],
+            "install_type": "git-clone",
+            "description": "Nodes: Image Resize (seam carving). Seam carving (image resize) for ComfyUI. Based on <a href='https://github.com/li-plus/seam-carving' target='blank'>https://github.com/li-plus/seam-carving</a>. With seam carving algorithm, the image could be intelligently resized while keeping the important contents undistorted. The carving process could be further guided, so that an object could be removed from the image without apparent artifacts."
+        },
+        {
+            "author": "YMC",
+            "title": "ymc-node-suite-comfyui",
+            "reference": "https://github.com/YMC-GitHub/ymc-node-suite-comfyui",
+            "files": [
+                "https://github.com/YMC-GitHub/ymc-node-suite-comfyui"
+            ],
+            "install_type": "git-clone",
+            "description": "ymc 's nodes for comfyui. This extension is composed of nodes that provide various utility features such as text, region, and I/O."
+        },
+        {
+            "author": "chibiace",
+            "title": "ComfyUI-Chibi-Nodes",
+            "reference": "https://github.com/chibiace/ComfyUI-Chibi-Nodes",
+            "files": [
+                "https://github.com/chibiace/ComfyUI-Chibi-Nodes"
+            ],
+            "install_type": "git-clone",
+            "description": "Nodes:Loader, Prompts, ..."
+        },
+        {
+            "author": "DigitalIO",
+            "title": "ComfyUI-stable-wildcards",
+            "reference": "https://github.com/DigitalIO/ComfyUI-stable-wildcards",
+            "files": [
+                "https://github.com/DigitalIO/ComfyUI-stable-wildcards"
+            ],
+            "install_type": "git-clone",
+            "description": "Wildcard implementation that can be reproduced with workflows."
+        },
+        {
+            "author": "THtianhao",
+            "title": "ComfyUI-Portrait-Maker",
+            "reference": "https://github.com/THtianhao/ComfyUI-Portrait-Maker",
+            "files": [
+                "https://github.com/THtianhao/ComfyUI-Portrait-Maker"
+            ],
+            "install_type": "git-clone",
+            "description": "Nodes:RetainFace, FaceFusion, RatioMerge2Image, MaskMerge2Image, ReplaceBoxImg, ExpandMaskBox, FaceSkin, SkinRetouching, PortraitEnhancement, ..."
+        },
+        {
+            "author": "zer0TF",
+            "title": "Cute Comfy",
+            "reference": "https://github.com/zer0TF/cute-comfy",
+            "files": [
+                "https://github.com/zer0TF/cute-comfy"
+            ],
+            "install_type": "git-clone",
+            "description": "Adds a configurable folder watcher that auto-converts Comfy metadata into a Civitai-friendly format for automatic resource tagging when you upload images. Oh, and it makes your UI awesome, too. 💜"
+        },
+        {
+            "author": "chflame163",
+            "title": "ComfyUI_MSSpeech_TTS",
+            "reference": "https://github.com/chflame163/ComfyUI_MSSpeech_TTS",
+            "files": [
+                "https://github.com/chflame163/ComfyUI_MSSpeech_TTS"
+            ],
+            "install_type": "git-clone",
+            "description": "A text-to-speech plugin used under ComfyUI. It utilizes the Microsoft Speech TTS interface to convert text content into MP3 format audio files."
+        },
+        {
+            "author": "drustan-hawk",
+            "title": "primitive-types",
+            "reference": "https://github.com/drustan-hawk/primitive-types",
+            "files": [
+                "https://github.com/drustan-hawk/primitive-types"
+            ],
+            "install_type": "git-clone",
+            "description": "A text-to-speech plugin used under ComfyUI. It utilizes the Microsoft Speech TTS interface to convert text content into MP3 format audio files."
         },
         {
             "author": "taabata",
@@ -2402,6 +2481,16 @@
             ],
             "install_type": "copy",
             "description": "Adds an Image Loader node that also shows images in subfolders of the default input directory"
+        },
+        {
+            "author": "Smuzzies",
+            "title": "Chatbox Overlay node for ComfyUI",
+            "reference": "https://github.com/Smuzzies/comfyui_chatbox_overlay",
+            "files": [
+                "https://github.com/Smuzzies/comfyui_chatbox_overlay/raw/main/chatbox_overlay.py"
+            ],
+            "install_type": "copy",
+            "description": "Nodes: Chatbox Overlay. Custom node for ComfyUI to add a text box over a processed image before save node."
         },
         {
             "author": "theally",

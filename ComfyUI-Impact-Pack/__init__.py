@@ -99,7 +99,10 @@ from impact.segs_nodes import *
 from impact.special_samplers import *
 
 impact.wildcards.read_wildcard_dict(wildcards_path)
-impact.wildcards.read_wildcard_dict(custom_wildcards_path)
+try:
+    impact.wildcards.read_wildcard_dict(impact.config.get_config()['custom_wildcards'])
+except Exception as e:
+    print(f"[Impact Pack] Failed to load custom wildcards directory.")
 
 NODE_CLASS_MAPPINGS = {
     "SAMLoader": SAMLoader,
@@ -232,6 +235,8 @@ NODE_CLASS_MAPPINGS = {
     "CombineRegionalPrompts": CombineRegionalPrompts,
     "RegionalPrompt": RegionalPrompt,
 
+    "ImpactCombineConditionings": CombineConditionings,
+
     "ImpactSEGSLabelFilter": SEGSLabelFilter,
     "ImpactSEGSRangeFilter": SEGSRangeFilter,
     "ImpactSEGSOrderedFilter": SEGSOrderedFilter,
@@ -252,6 +257,11 @@ NODE_CLASS_MAPPINGS = {
 
     "ImpactLogger": ImpactLogger,
     "ImpactDummyInput": ImpactDummyInput,
+
+    "ImpactQueueTrigger": ImpactQueueTrigger,
+    "ImpactSetWidgetValue": ImpactSetWidgetValue,
+    "ImpactNodeSetMuteState": ImpactNodeSetMuteState,
+    "ImpactControlBridge": ImpactControlBridge,
 }
 
 
@@ -336,6 +346,13 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImpactStringSelector": "String Selector",
 
     "RemoveNoiseMask": "Remove Noise Mask",
+
+    "ImpactCombineConditionings": "Combine Conditionings",
+
+    "ImpactQueueTrigger": "Queue Trigger",
+    "ImpactSetWidgetValue": "Set Widget Value",
+    "ImpactNodeSetMuteState": "Set Mute State",
+    "ImpactControlBridge": "Control Bridge",
 
     "LatentSwitch": "Switch (latent/legacy)",
     "SEGSSwitch": "Switch (SEGS/legacy)"

@@ -3,12 +3,28 @@ import random
 import os
 import nodes
 import folder_paths
+import yaml
 
 wildcard_dict = {}
 
 
 def get_wildcard_list():
     return [f"__{x}__" for x in wildcard_dict.keys()]
+
+
+def wildcard_normalize(x):
+    return x.replace("\\", "/").lower()
+
+
+def read_wildcard(k, v):
+    if isinstance(v, list):
+        k = wildcard_normalize(k)
+        wildcard_dict[k] = v
+    elif isinstance(v, dict):
+        for k2, v2 in v.items():
+            new_key = f"{k}/{k2}"
+            new_key = wildcard_normalize(new_key)
+            read_wildcard(new_key, v2)
 
 
 def read_wildcard_dict(wildcard_path):
@@ -28,6 +44,13 @@ def read_wildcard_dict(wildcard_path):
                     with open(file_path, 'r', encoding="UTF-8", errors="ignore") as f:
                         lines = f.read().splitlines()
                         wildcard_dict[key] = lines
+            elif file.endswith('.yaml'):
+                file_path = os.path.join(root, file)
+                with open(file_path, 'r') as f:
+                    yaml_data = yaml.load(f, Loader=yaml.FullLoader)
+
+                    for k, v in yaml_data.items():
+                        read_wildcard(k, v)
 
     return wildcard_dict
 
@@ -43,14 +66,48 @@ def process(text, seed=None):
             nonlocal replacements_found
             options = match.group(1).split('|')
 
+            multi_select_pattern = options[0].split('$$')
+            select_range = None
+            select_sep = ' '
+            range_pattern = r'(\d+)(-(\d+))?'
+            range_pattern2 = r'-(\d+)'
+
+            if len(multi_select_pattern) > 1:
+                r = re.match(range_pattern, options[0])
+
+                if r is None:
+                    r = re.match(range_pattern2, options[0])
+                    a = '1'
+                    b = r.group(1).strip()
+                else:
+                    a = r.group(1).strip()
+                    b = r.group(3).strip()
+
+                if r is not None:
+                    if b is not None and is_numeric_string(a) and is_numeric_string(b):
+                        # PATTERN: num1-num2
+                        select_range = int(a), int(b)
+                    elif is_numeric_string(a):
+                        # PATTERN: num
+                        x = int(a)
+                        select_range = (x, x)
+
+                    if select_range is not None and len(multi_select_pattern) == 2:
+                        # PATTERN: count$$
+                        options[0] = multi_select_pattern[1]
+                    elif select_range is not None and len(multi_select_pattern) == 3:
+                        # PATTERN: count$$ sep $$
+                        select_sep = multi_select_pattern[1]
+                        options[0] = multi_select_pattern[2]
+
             adjusted_probabilities = []
 
             total_prob = 0
 
             for option in options:
                 parts = option.split('::', 1)
-                if len(parts) == 2 and parts[0].isdigit():
-                    config_value = int(parts[0])
+                if len(parts) == 2 and is_numeric_string(parts[0].strip()):
+                    config_value = float(parts[0].strip())
                 else:
                     config_value = 1  # Default value if no configuration is provided
 
@@ -59,27 +116,47 @@ def process(text, seed=None):
 
             normalized_probabilities = [prob / total_prob for prob in adjusted_probabilities]
 
-            replacement = random.choices(options, weights=normalized_probabilities, k=1)[0]
+            if select_range is None:
+                select_count = 1
+            else:
+                select_count = random.randint(select_range[0], select_range[1])
+
+            if select_count > len(options):
+                selected_items = options
+            else:
+                selected_items = random.choices(options, weights=normalized_probabilities, k=select_count)
+                selected_items = set(selected_items)
+
+                try_count = 0
+                while len(selected_items) < select_count and try_count < 10:
+                    remaining_count = select_count - len(selected_items)
+                    additional_items = random.choices(options, weights=normalized_probabilities, k=remaining_count)
+                    selected_items |= set(additional_items)
+                    try_count += 1
+
+            selected_items2 = [re.sub(r'^\s*[0-9.]+::', '', x, 1) for x in selected_items]
+            replacement = select_sep.join(selected_items2)
+            if '::' in replacement:
+                pass
+
             replacements_found = True
-            return re.sub(r'^[0-9]+::', '', replacement, 1)
+            return replacement
 
         pattern = r'{([^{}]*?)}'
         replaced_string = re.sub(pattern, replace_option, string)
-
-        pattern = r'\[([^[\]]*?)\]'
-        replaced_string = re.sub(pattern, replace_option, replaced_string)
 
         return replaced_string, replacements_found
 
     def replace_wildcard(string):
         global wildcard_dict
-        pattern = r"__([\w.\-/*]+)__"
+        pattern = r"__([\w.\-/*\\]+)__"
         matches = re.findall(pattern, string)
 
         replacements_found = False
 
         for match in matches:
             keyword = match.lower()
+            keyword = wildcard_normalize(keyword)
             if keyword in wildcard_dict:
                 replacement = random.choice(wildcard_dict[keyword])
                 replacements_found = True
@@ -97,6 +174,9 @@ def process(text, seed=None):
                     replacement = random.choice(total_patterns)
                     replacements_found = True
                     string = string.replace(f"__{match}__", replacement, 1)
+            elif '/' not in keyword:
+                string_fallback = string.replace(f"__{keyword}__", f"__*/{keyword}__", 1)
+                string, replacements_found = replace_wildcard(string_fallback)
 
         return string, replacements_found
 
@@ -199,7 +279,7 @@ def resolve_lora_name(lora_name_cache, name):
                 return x
 
 
-def process_with_loras(wildcard_opt, model, clip):
+def process_with_loras(wildcard_opt, model, clip, clip_encoder=None):
     lora_name_cache = []
 
     pass1 = process(wildcard_opt)
@@ -233,5 +313,8 @@ def process_with_loras(wildcard_opt, model, clip):
             print(f"LORA NOT FOUND: {lora_name}")
 
     print(f"CLIP: {pass2}")
-    return model, clip, nodes.CLIPTextEncode().encode(clip, pass2)[0]
 
+    if clip_encoder is None:
+        return model, clip, nodes.CLIPTextEncode().encode(clip, pass2)[0]
+    else:
+        return model, clip, clip_encoder.encode(clip, pass2)[0]

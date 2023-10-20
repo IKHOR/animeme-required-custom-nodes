@@ -17,13 +17,14 @@ from impact.utils import *
 import impact.core as core
 from impact.core import SEG
 from impact.config import MAX_RESOLUTION, latent_letter_path
-from PIL import Image
+from PIL import Image, ImageOps
 import numpy as np
 import hashlib
 import json
 import safetensors.torch
 from PIL.PngImagePlugin import PngInfo
 import comfy.model_management
+import base64
 
 warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is deprecated')
 
@@ -1405,106 +1406,174 @@ def get_image_hash(arr):
     return hash((sum1, sum2, sum3, sum4))
 
 
-class PreviewBridge(nodes.PreviewImage):
+def get_file_item(base_type, path):
+    path_type = base_type
+
+    if path == "[output]":
+        path_type = "output"
+        path = path[:-9]
+    elif path == "[input]":
+        path_type = "input"
+        path = path[:-8]
+    elif path == "[temp]":
+        path_type = "temp"
+        path = path[:-7]
+
+    subfolder = os.path.dirname(path)
+    filename = os.path.basename(path)
+
+    return {
+            "filename": filename,
+            "subfolder": subfolder,
+            "type": path_type
+           }
+
+
+class PreviewBridge:
     @classmethod
     def INPUT_TYPES(s):
-        return {"required": {"images": ("IMAGE",), },
-                "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO", "unique_id": "UNIQUE_ID"},
-                "optional": {"image": (["#placeholder"], )},
+        return {"required": {
+                    "images": ("IMAGE",),
+                    "image": ("STRING", {"default": ""}),
+                    },
+                "hidden": {"unique_id": "UNIQUE_ID"},
                 }
 
     RETURN_TYPES = ("IMAGE", "MASK", )
 
     FUNCTION = "doit"
 
+    OUTPUT_NODE = True
+
     CATEGORY = "ImpactPack/Util"
 
     def __init__(self):
         super().__init__()
+        self.output_dir = folder_paths.get_temp_directory()
+        self.type = "temp"
         self.prev_hash = None
 
-    def doit(self, images, image, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None, unique_id=None):
-        if image != "#placeholder" and isinstance(image, str):
-            image_path = folder_paths.get_annotated_filepath(image)
-            img = Image.open(image_path).convert("RGB")
-            data = np.array(img)
-            image_hash = get_image_hash(data)
-        else:
-            data = (255. * images[0].cpu().numpy()).astype(int)
-            image_hash = get_image_hash(data)
+    @staticmethod
+    def load_image(pb_id):
+        is_fail = False
+        if pb_id not in impact.core.preview_bridge_image_id_map:
+            is_fail = True
 
-        is_changed = False
-        if self.prev_hash is None or self.prev_hash != image_hash:
-            self.prev_hash = image_hash
-            is_changed = True
+        image_path, ui_item = impact.core.preview_bridge_image_id_map[pb_id]
 
-        if is_changed or image == "#placeholder":
-            # new input image
-            res = self.save_images(images, filename_prefix, prompt, extra_pnginfo)
+        if not os.path.isfile(image_path):
+            is_fail = True
 
-            item = res['ui']['images'][0]
+        if not is_fail:
+            i = Image.open(image_path)
+            i = ImageOps.exif_transpose(i)
+            image = i.convert("RGB")
+            image = np.array(image).astype(np.float32) / 255.0
+            image = torch.from_numpy(image)[None,]
 
-            if not item['filename'].endswith(']'):
-                filepath = f"{item['filename']} [{item['type']}]"
+            if 'A' in i.getbands():
+                mask = np.array(i.getchannel('A')).astype(np.float32) / 255.0
+                mask = 1. - torch.from_numpy(mask)
             else:
-                filepath = item['filename']
+                mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
 
-            image, mask = nodes.LoadImage().load_image(filepath)
+        if is_fail:
+            image = empty_pil_tensor()
+            mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
+            ui_item = {
+                "filename": 'empty.png',
+                "subfolder": '',
+                "type": 'temp'
+            }
 
-            res['ui']['aux'] = [image_hash, res['ui']['images']]
-            res['result'] = (image, mask, )
+        return (image, mask.unsqueeze(0), ui_item)
 
-            return res
+    def doit(self, images, image, unique_id):
+        need_refresh = False
 
+        if unique_id not in impact.core.preview_bridge_cache:
+            need_refresh = True
+
+        elif impact.core.preview_bridge_cache[unique_id][0] is not images:
+            need_refresh = True
+
+        if not need_refresh:
+            pixels, mask, path_item = PreviewBridge.load_image(image)
+            image = [path_item]
         else:
-            # new mask
-            if '0' in image:  # fallback
-                image = image['0']
+            res = nodes.PreviewImage().save_images(images, filename_prefix="PreviewBridge/PB-")
+            image2 = res['ui']['images']
+            pixels = images
+            mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
 
-            forward = {'filename': image['forward_filename'],
-                       'subfolder': image['forward_subfolder'],
-                       'type': image['forward_type'], }
+            path = os.path.join(folder_paths.get_temp_directory(), 'PreviewBridge', image2[0]['filename'])
+            impact.core.set_previewbridge_image(unique_id, path, image2[0])
+            impact.core.preview_bridge_image_id_map[image] = (path, image2[0])
+            impact.core.preview_bridge_image_name_map[unique_id, path] = (image, image2[0])
+            impact.core.preview_bridge_cache[unique_id] = (images, image2)
 
-            res = {'ui': {'images': [forward]}}
+            image = image2
 
-            imgpath = ""
-            if 'subfolder' in image and image['subfolder'] != "":
-                imgpath = image['subfolder'] + "/"
-
-            imgpath += f"{image['filename']}"
-
-            if 'type' in image and image['type'] != "":
-                imgpath += f" [{image['type']}]"
-
-            res['ui']['aux'] = [image_hash, [forward]]
-            res['result'] = nodes.LoadImage().load_image(imgpath)
-
-            return res
+        return {
+            "ui": {"images": image},
+            "result": (pixels, mask, ),
+        }
 
 
-class ImageReceiver(nodes.LoadImage):
+class ImageReceiver:
     @classmethod
     def INPUT_TYPES(s):
         input_dir = folder_paths.get_input_directory()
         files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
         return {"required": {
                     "image": (sorted(files), ),
-                    "link_id": ("INT", {"default": 0, "min": 0, "max": sys.maxsize, "step": 1}), },
+                    "link_id": ("INT", {"default": 0, "min": 0, "max": sys.maxsize, "step": 1}),
+                    "save_to_workflow": ("BOOLEAN", {"default": False}),
+                    "image_data": ("STRING", {"multiline": False}),
+                    },
                 }
 
     FUNCTION = "doit"
 
+    RETURN_TYPES = ("IMAGE", "MASK")
+
     CATEGORY = "ImpactPack/Util"
 
-    def doit(self, image, link_id):
-        return nodes.LoadImage().load_image(image)
+    def doit(self, image, link_id, save_to_workflow, image_data):
+        if save_to_workflow:
+            try:
+                image_data = base64.b64decode(image_data.split(",")[1])
+                i = Image.open(BytesIO(image_data))
+                i = ImageOps.exif_transpose(i)
+                image = i.convert("RGB")
+                image = np.array(image).astype(np.float32) / 255.0
+                image = torch.from_numpy(image)[None,]
+                if 'A' in i.getbands():
+                    mask = np.array(i.getchannel('A')).astype(np.float32) / 255.0
+                    mask = 1. - torch.from_numpy(mask)
+                else:
+                    mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
+                return (image, mask.unsqueeze(0))
+            except Exception as e:
+                print(f"[ComfyUI-Impact-Pack] ImageReceiver - invalid 'image_data'")
+                mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
+                return (empty_pil_tensor(64, 64), mask, )
+        else:
+            return nodes.LoadImage().load_image(image)
 
     @classmethod
-    def VALIDATE_INPUTS(s, image, link_id):
-        if not folder_paths.exists_annotated_filepath(image) or image.startswith("/") or ".." in image:
+    def VALIDATE_INPUTS(s, image, link_id, save_to_workflow, image_data):
+        if image != '#DATA' and not folder_paths.exists_annotated_filepath(image) or image.startswith("/") or ".." in image:
             return "Invalid image file: {}".format(image)
 
         return True
+
+    @classmethod
+    def IS_CHANGED(s, image, link_id, save_to_workflow, image_data):
+        if save_to_workflow:
+            return hash(image_data)
+        else:
+            return get_image_hash(image)
 
 
 from server import PromptServer
@@ -1942,6 +2011,14 @@ class ImpactWildcardEncode:
     RETURN_TYPES = ("MODEL", "CLIP", "CONDITIONING", "STRING")
     RETURN_NAMES = ("model", "clip", "conditioning", "populated_text")
     FUNCTION = "doit"
+
+    @staticmethod
+    def process_with_loras(**kwargs):
+        return impact.wildcards.process_with_loras(**kwargs)
+
+    @staticmethod
+    def get_wildcard_list():
+        return impact.wildcards.get_wildcard_list()
 
     def doit(self, *args, **kwargs):
         populated = kwargs['populated_text']

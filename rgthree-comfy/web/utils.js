@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { wait } from "./shared_utils.js";
 const oldApiGetNodeDefs = api.getNodeDefs;
 api.getNodeDefs = async function () {
     const defs = await oldApiGetNodeDefs.call(api);
@@ -244,13 +245,6 @@ function toggleConnectionLabel(cxn, hide = true) {
     }
     return cxn;
 }
-export function wait(ms = 16, value) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(value);
-        }, ms);
-    });
-}
 export function addHelp(nodeCtor, comfyApp) {
     addMenuItem(nodeCtor, comfyApp || app, {
         name: "🛟 Node Help",
@@ -378,7 +372,6 @@ function getTypeFromSlot(slot, dir, skipSelf = false) {
         const connectedNode = graph.getNodeById(connectedId);
         const connectedSlots = dir === IoDirection.OUTPUT ? connectedNode.inputs : connectedNode.outputs;
         let connectedSlot = connectedSlots[connectedSlotNum];
-        console.log(connectedSlot);
         if ((connectedSlot === null || connectedSlot === void 0 ? void 0 : connectedSlot.type) != null && (connectedSlot === null || connectedSlot === void 0 ? void 0 : connectedSlot.type) != "*") {
             return {
                 type: connectedSlot.type,
