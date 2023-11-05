@@ -2,7 +2,6 @@ import os
 import json
 import subprocess
 import shutil
-import sys
 import torch
 import numpy as np
 from typing import Dict, List
@@ -21,17 +20,11 @@ from .model_utils import IsChangedHelper, get_available_motion_loras, get_availa
 from .context import ContextOptions, ContextSchedules, UniformContextOptions
 from .sampling import animatediff_sample_factory
 
+import nodes as comfy_nodes
 import comfy.sample as comfy_sample
 
 # override comfy_sample.sample with animatediff-support version
 comfy_sample.sample = animatediff_sample_factory(comfy_sample.sample)
-
-# Need to access max size variables all the way in ComfyUI's base directory
-# Go from '../ComfyUI/custom_nodes/ComfyUI-AnimateDiff-Evolved/animatediff/nodes.py' -> '../ComfyUI'
-# Yes, this is wacky, but if it works, it works
-from pathlib import Path
-sys.path.insert(0, Path(__file__).parent.parent.parent.parent)
-import nodes as comfy_nodes
 
 
 class AnimateDiffLoRALoader:
@@ -72,6 +65,7 @@ class AnimateDiffLoaderWithContext:
                 "model": ("MODEL",),
                 "model_name": (get_available_motion_models(),),
                 "beta_schedule": (BetaSchedules.get_alias_list_with_first_element(BetaSchedules.SQRT_LINEAR),),
+                #"apply_mm_groupnorm_hack": ("BOOLEAN", {"default": True}),
             },
             "optional": {
                 "context_options": ("CONTEXT_OPTIONS",),
@@ -86,7 +80,7 @@ class AnimateDiffLoaderWithContext:
 
     def load_mm_and_inject_params(self,
         model: ModelPatcher,
-        model_name: str, beta_schedule: str,
+        model_name: str, beta_schedule: str,# apply_mm_groupnorm_hack: bool,
         context_options: ContextOptions=None, motion_lora: MotionLoRAList=None,
     ):
         # load motion module
@@ -95,6 +89,7 @@ class AnimateDiffLoaderWithContext:
         injection_params = InjectionParams(
                 video_length=None,
                 unlimited_area_hack=False,
+                apply_mm_groupnorm_hack=True,
                 beta_schedule=beta_schedule,
                 injector=mm.injector_version,
                 model_name=model_name,
@@ -178,6 +173,7 @@ class AnimateDiffLoader_Deprecated:
         injection_params = InjectionParams(
                 video_length=init_frames_len,
                 unlimited_area_hack=unlimited_area_hack,
+                apply_mm_groupnorm_hack=True,
                 beta_schedule=beta_schedule,
                 injector=InjectorVersion.V1_V2,
                 model_name=model_name,
@@ -226,6 +222,7 @@ class AnimateDiffLoaderAdvanced_Deprecated:
         injection_params = InjectionParams(
                 video_length=init_frames_len,
                 unlimited_area_hack=unlimited_area_hack,
+                apply_mm_groupnorm_hack=True,
                 beta_schedule=beta_schedule,
                 injector=InjectorVersion.V1_V2,
                 model_name=model_name,
